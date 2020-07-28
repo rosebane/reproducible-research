@@ -1,0 +1,85 @@
+# Loading and preprocessing the data
+
+```{r}
+activity <- read.csv("activity.csv")
+activity$date <- as.Date(activity$date, "%Y-%m-%d")
+activity <- as.data.frame(activity) 
+```
+
+# What is mean total number of steps taken per day?
+
+```{r}
+plot <- gglot(activity, aes(x=date)) + geom_histogram(aes(y=steps))
+plot
+```
+Mean and Median of the total number of steps taken per day
+```{r}
+steps <- with(activity, tapply(steps, date, sum, na.rm = TRUE))
+mean(steps)
+median(steps)
+```
+
+# What is the average daily activity pattern?
+
+```{r}
+daymeans <- with(na.omit(activity), tapply(steps, interval, mean))
+plot2 <- activity %>%
+  ggplot(aes(x=steps, y=date))
+```
+## Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps? 
+```{r}
+daymeans[which(daymeans == max(daymeans))]
+```
+
+# Imputing missing values
+Summing NA values 
+```{r}
+library(scales)
+sum(is.na(activity))
+```
+Filling missing data
+```{r}
+int <- unique(activity$interval)
+len <- nrow(activity[is.na(activity),])
+
+NAint <-  activity[is.na(activity),3]
+NAsteps <- activity[is.na(activity),1]
+
+for (j in 1:2304) {
+       for (i in 1:288){
+              if (NAint[j] == int[i])
+                     NAsteps[j] <- daymeans[i]
+       
+       }
+}
+
+NAindex <- is.na(activity$steps)
+activity$steps<- replace(activity$steps,NAindex, NAsteps)
+```
+Histogram
+```{r}
+plot3 <- gglot(activity, aes(x=date)) + geom_histogram(aes(y=steps))
+plot3
+```
+Mean and median
+```{r}
+steps <- with(activity, tapply(steps, date, sum, na.rm = TRUE))
+mean(steps)
+median(steps)
+```
+### Do these values differ from the estimates from the first part of the assignment? What is the impact of imputing missing data on the estimates of the total daily number of steps?
+Yes, the values differed. After removing the missing data, the mean and median are now the same.
+
+# Are there differences in activity patterns between weekdays and weekends?
+```{r}
+activity <- mutate(activity, day = weekdays(activity$date))
+weekdays <- c('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday')
+activity$day <- factor((weekdays(activity$date) %in% weekdays), 
+         levels=c(FALSE, TRUE), labels=c('Weekend', 'Weekday'))
+
+weekdays <- subset(activity, day == "Weekday")
+weekends <- subset(activity, day == "Weekend")
+
+weekendmeans <- with(weekends, tapply(steps, interval, mean))
+weekdaymeans <- with(weekdays, tapply(steps, interval, mean))
+```
